@@ -6,6 +6,7 @@
 */
 
 #include <stdlib.h>
+#include <strings.h>
 #include <sys/types.h>
 #include <termios.h>
 #include <stdio.h>
@@ -48,14 +49,17 @@ static size_t arrow(size_t index, char **line)
 
 /* dprintf(1, "\33[%dF\n", index / 46); */
 /* cursor_forward(index % 46 + 1); */
-static void print_line(prompt_t *prompt, env_t *env)
+static void print_line(prompt_t *prompt, env_t *env, bool del)
 {
     cursor_backward(prompt->prompt_size + prompt->index);
     dprintf(1, "\33[K");
     print_prompt(env, prompt->tty);
     dprintf(1, "%.*s", (int)vector_total(*prompt->line), *prompt->line);
     cursor_backward(vector_total(*prompt->line));
-    cursor_forward(prompt->index + 1);
+    if (del)
+        cursor_forward(prompt->index == 1 ? prompt->index - 1 : prompt->index);
+    else
+        cursor_forward(prompt->index + 1);
 }
 
 // struct with c, index, line, prompt_size
@@ -67,13 +71,13 @@ static ssize_t switching(prompt_t *prompt, env_t *env)
         return -1;
     if (prompt->character == KEY_DEL) {
         prompt->index = delete_command(prompt->index, prompt->line);
-        print_line(prompt, env);
+        print_line(prompt, env, true);
         return prompt->index;
     } else if ((ssize_t)vector_total(*prompt->line) == prompt->index)
         vector_add(prompt->line, &prompt->character);
     else
         vector_push(prompt->line, prompt->index, &prompt->character);
-    print_line(prompt, env);
+    print_line(prompt, env, false);
     return prompt->index + 1;
 }
 
@@ -92,8 +96,8 @@ static bool loop_char(prompt_t *prompt, env_t *env, char **input)
 {
     while (true) {
         prompt->character = getchar();
-        if (prompt->character == KEY_ENTER) {
-            write(1, "\n", 1);
+        if (prompt->character == 0x000a) {
+            dprintf(1, "\n");
             return false;
         }
         prompt->index = switching(prompt, env);

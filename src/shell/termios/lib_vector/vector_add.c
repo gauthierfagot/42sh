@@ -14,7 +14,7 @@ void vector_add(void *data, void *c)
     void *current = NULL;
 
     if ((vector)->current >= (vector)->max) {
-        vector_resize(&vector, (vector)->max * 2);
+        vector_resize(&vector, (((vector)->max * 2) * vector->size));
         *(void **)data = (char *)vector + sizeof(vector_t);
     }
     current = (*(void **)data) + ((vector)->size) * (vector)->current;
